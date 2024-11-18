@@ -1,0 +1,12 @@
+../Core/Src/app_freertos.c:712:6:maximumsPeriodTimer_callback	1
+../Core/Src/app_freertos.c:842:6:ADS_Callback	1
+../Core/Src/app_freertos.c:359:6:StartTaskRxCommands	20
+../Core/Src/app_freertos.c:552:6:StartTaskAccelerometer	6
+../Core/Src/app_freertos.c:617:6:StartSensorsPolling	5
+../Core/Src/app_freertos.c:693:6:StartADS1232Task	1
+../Core/Src/app_freertos.c:182:6:get_platform_number	1
+../Core/Src/app_freertos.c:218:6:MX_FREERTOS_Init	1
+../Core/Src/app_freertos.c:723:6:HAL_UART_RxCpltCallback	30
+../Core/Src/app_freertos.c:819:6:HAL_UART_TxCpltCallback	2
+../Core/Src/app_freertos.c:825:6:check_errors	3
+../Core/Src/app_freertos.c:285:6:StartDebugTask	4

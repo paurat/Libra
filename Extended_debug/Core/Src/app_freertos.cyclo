@@ -1,0 +1,10 @@
+app_freertos.c:157:6:get_platform_number	6
+app_freertos.c:192:6:MX_FREERTOS_Init	1
+app_freertos.c:250:6:StartDebugTask	5
+app_freertos.c:324:6:StartTaskRxCommands	5
+app_freertos.c:402:6:StartTaskAccelerometer	6
+app_freertos.c:467:6:StartSensorsPolling	6
+app_freertos.c:516:6:maximumsPeriodTimer_callback	1
+app_freertos.c:527:6:HAL_UART_RxCpltCallback	9
+app_freertos.c:565:6:HAL_UART_TxCpltCallback	2
+app_freertos.c:571:6:check_errors	3

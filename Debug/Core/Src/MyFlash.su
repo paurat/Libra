@@ -1,0 +1,3 @@
+../Core/Src/MyFlash.c:10:6:clearFlash	24	static
+../Core/Src/MyFlash.c:47:6:WriteDeviceAddressOffset	48	static
+../Core/Src/MyFlash.c:70:6:ReadDeviceAddressOffset	32	static

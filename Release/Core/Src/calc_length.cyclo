@@ -1,0 +1,23 @@
+../Core/Src/calc_length.cpp:67:9:int32_t get_acceleration_data(lis331dlh_t*)	3
+../Core/Src/calc_length.cpp:83:6:void find_degree(lis331dlh_t*)	5
+../Core/Src/calc_length.cpp:128:6:void check_overrun(lis331dlh_t*)	2
+../Core/Src/calc_length.cpp:138:9:uint8_t is_measurement_ready(lis331dlh_t*)	1
+../Core/Src/calc_length.cpp:144:6:void save_in_window(float)	3
+../Core/Src/calc_length.cpp:160:7:float get_mean_value_from_window()	1
+../Core/Src/calc_length.cpp:168:9:uint8_t is_need_stop_measuring()	3
+../Core/Src/calc_length.cpp:176:7:float get_real_length()	1
+../Core/Src/calc_length.cpp:183:9:uint8_t is_measuring_meaningful(float)	2
+../Core/Src/calc_length.cpp:188:6:void reset_variables()	2
+../Core/Src/calc_length.cpp:200:6:void check_positive_speed()	2
+../Core/Src/calc_length.cpp:211:6:void update_speed_and_length(lis331dlh_t*)	2
+../Core/Src/calc_length.cpp:220:6:void print_result(float)	2
+../Core/Src/calc_length.cpp:227:6:void find_maxmin_accelerations()	3
+../Core/Src/calc_length.cpp:245:6:void calc_length(lis331dlh_t*)	7
+../Core/Src/calc_length.cpp:303:6:void reset_acceleration_maximums()	2
+../Core/Src/calc_length.cpp:313:6:void reset_move_maximums()	2
+../Core/Src/calc_length.cpp:323:7:float get_max_positive_acceleration()	1
+../Core/Src/calc_length.cpp:329:7:float get_max_negative_acceleration()	1
+../Core/Src/calc_length.cpp:334:7:float get_max_positive_move()	1
+../Core/Src/calc_length.cpp:339:7:float get_max_negative_move()	1
+../Core/Src/calc_length.cpp:343:9:uint8_t round_and_limit(float, float)	2
+../Core/Src/calc_length.cpp:351:7:float round_and_limit_float(float)	2

@@ -1,0 +1,15 @@
+../Core/Src/lis331dlh.cpp:64:7:float DATA_RATE_TO_TIME(data_rate_t)	24	static
+../Core/Src/lis331dlh.cpp:88:6:void chip_select(lis331dlh_t*)	16	static
+../Core/Src/lis331dlh.cpp:93:6:void chip_deselect(lis331dlh_t*)	16	static
+../Core/Src/lis331dlh.cpp:98:6:void read_register(lis331dlh_t*, uint8_t, uint8_t*, uint8_t)	48	static
+../Core/Src/lis331dlh.cpp:123:6:void write_register(lis331dlh_t*, uint8_t, uint8_t)	32	static
+../Core/Src/lis331dlh.cpp:138:5:int lis331dlh_check_presence(lis331dlh_t*)	32	static
+../Core/Src/lis331dlh.cpp:147:5:int lis331dlh_init(lis331dlh_t*)	16	static
+../Core/Src/lis331dlh.cpp:183:5:int lis331dlh_init_spi(lis331dlh_t*, SPI_HandleTypeDef*, GPIO_TypeDef*, uint16_t)	24	static
+../Core/Src/lis331dlh.cpp:208:5:int lis331dlh_init_i2c(lis331dlh_t*, I2C_HandleTypeDef*)	16	static
+../Core/Src/lis331dlh.cpp:216:10:uint16_t lis331dlh_print_config(lis331dlh_t*)	32	static
+../Core/Src/lis331dlh.cpp:243:16:int16_t get_scaled_accelaration(uint8_t, uint8_t, acceleration_range_t)	24	static
+../Core/Src/lis331dlh.cpp:248:5:int lis331dlh_update_accelaration(lis331dlh_t*)	32	static
+../Core/Src/lis331dlh.cpp:262:5:int lis331dlh_update_accelaration(lis331dlh_t*, int16_t&, int16_t&, int16_t&)	24	static
+../Core/Src/lis331dlh.cpp:273:6:void lis331dlh_update_config(lis331dlh_t*)	16	static
+../Core/Src/lis331dlh.cpp:285:9:uint8_t lis331dlh_read_status(lis331dlh_t*)	16	static

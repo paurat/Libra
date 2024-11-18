@@ -1,0 +1,2 @@
+../Core/Src/hdc1080.c:12:6:hdc1080_init	56	static
+../Core/Src/hdc1080.c:52:8:hdc1080_start_measurement	48	static

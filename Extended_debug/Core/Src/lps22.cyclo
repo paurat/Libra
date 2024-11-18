@@ -1,0 +1,11 @@
+lps22.cpp:12:6:void SENSOR_IO_Write(uint8_t, uint8_t, uint8_t)	1
+lps22.cpp:18:10:uint8_t SENSOR_IO_Read(uint8_t, uint8_t, uint8_t*)	2
+lps22.cpp:28:6:bool lps22hb_init(I2C_HandleTypeDef*)	2
+lps22.cpp:66:9:uint8_t lps22hb_get_status()	1
+lps22.cpp:71:6:bool lps22hb_check_pressure_overrun(uint8_t)	2
+lps22.cpp:80:6:bool lps22hb_check_temperature_overrun(uint8_t)	2
+lps22.cpp:89:6:bool lps22hb_check_pressure_data_available(uint8_t)	1
+lps22.cpp:93:6:bool lps22hb_check_temperature_data_available(uint8_t)	1
+lps22.cpp:97:9:uint8_t lps22hb_read_id()	1
+lps22.cpp:109:7:float lps22hb_read_pressure()	5
+lps22.cpp:133:7:float lps22hb_read_temperature()	2

@@ -1,0 +1,27 @@
+C:\ST\STM32CubeIDE_1.15.1\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.0.200.202406191623\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/c++/12.3.1/cmath:241:3:constexpr float std::fabs(float)	16	static
+C:\ST\STM32CubeIDE_1.15.1\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.0.200.202406191623\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/c++/12.3.1/cmath:1418:3:constexpr float std::fmax(float, float)	16	static
+C:\ST\STM32CubeIDE_1.15.1\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.0.200.202406191623\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/c++/12.3.1/cmath:1438:3:constexpr float std::fmin(float, float)	16	static
+../Core/Src/calc_length.cpp:67:9:int32_t get_acceleration_data(lis331dlh_t*)	16	static
+../Core/Src/calc_length.cpp:83:6:void find_degree(lis331dlh_t*)	64	static
+../Core/Src/calc_length.cpp:128:6:void check_overrun(lis331dlh_t*)	16	static
+../Core/Src/calc_length.cpp:138:9:uint8_t is_measurement_ready(lis331dlh_t*)	16	static
+../Core/Src/calc_length.cpp:144:6:void save_in_window(float)	24	static
+../Core/Src/calc_length.cpp:160:7:float get_mean_value_from_window()	16	static
+../Core/Src/calc_length.cpp:168:9:uint8_t is_need_stop_measuring()	16	static
+../Core/Src/calc_length.cpp:176:7:float get_real_length()	8	static
+../Core/Src/calc_length.cpp:183:9:uint8_t is_measuring_meaningful(float)	16	static
+../Core/Src/calc_length.cpp:188:6:void reset_variables()	16	static
+../Core/Src/calc_length.cpp:200:6:void check_positive_speed()	16	static
+../Core/Src/calc_length.cpp:211:6:void update_speed_and_length(lis331dlh_t*)	16	static
+../Core/Src/calc_length.cpp:220:6:void print_result(float)	80	static
+../Core/Src/calc_length.cpp:227:6:void find_maxmin_accelerations()	16	static
+../Core/Src/calc_length.cpp:245:6:void calc_length(lis331dlh_t*)	24	static
+../Core/Src/calc_length.cpp:303:6:void reset_acceleration_maximums()	8	static
+../Core/Src/calc_length.cpp:313:6:void reset_move_maximums()	8	static
+../Core/Src/calc_length.cpp:323:7:float get_max_positive_acceleration()	8	static
+../Core/Src/calc_length.cpp:329:7:float get_max_negative_acceleration()	8	static
+../Core/Src/calc_length.cpp:334:7:float get_max_positive_move()	8	static
+../Core/Src/calc_length.cpp:339:7:float get_max_negative_move()	8	static
+../Core/Src/calc_length.cpp:343:9:uint8_t round_and_limit(float, float)	16	static
+../Core/Src/calc_length.cpp:351:7:float round_and_limit_float(float)	16	static
+C:\ST\STM32CubeIDE_1.15.1\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.0.200.202406191623\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/c++/12.3.1/cmath:253:5:constexpr typename __gnu_cxx::__enable_if<std::__is_integer<_Tp>::__value, double>::__type std::fabs(_Tp) [with _Tp = long int]	24	static

@@ -1,0 +1,3 @@
+../Core/Src/ADS1232.c:28:6:set_ADS_pins	1
+../Core/Src/ADS1232.c:45:6:Timer_Event	7
+../Core/Src/ADS1232.c:86:6:Start_read	2
