@@ -61,6 +61,8 @@ typedef enum {
 		PARSER_Sxx,
 		PARSER_S98,
 		PARSER_MSV70,
+		PARSER_BDR,
+		PARSER_MSV7,
 		PARSER_IDN7,
 		PARSER_ADR7,
 		PARSER_ADRNUM,
@@ -92,6 +94,7 @@ void ADS_Callback(uint32_t value);
 uint8_t transmitting_command[22];
 uint8_t received_command[22];	//буфер приема данных от терминала
 uint16_t received_number = 0;
+uint32_t received_BDR = 0;
 uint32_t ads_val;
 uint8_t is_data_received = 0;
 uint32_t test1 = 0x78730B00;
@@ -99,8 +102,10 @@ uint32_t test2 = 0x000B7378;
 int IDN=0;
 uint8_t RX_command_buff[1]={0};
 int RX_command_count=0;
+int MSV0 = 0;
 int MSV = 0;
 int ADR = 0;
+int END_Cmd=0;
 parser_state_t terminal_parser_state = PARSER_EMPT;
 
 LPS22HB_sensor LPS_data;
@@ -224,6 +229,7 @@ void MX_FREERTOS_Init(void) {
 	serial_number_control = abs((int16_t)serial_number);
 	ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 	//memset(transmitting_command, 0, sizeof(transmitting_command));
+	int Over8_reg=USART_CR1_OVER8;
 	while (sensor_inf.platform_adr[0]!=0xFF)
 	{
 		if(offset>=248){
@@ -472,7 +478,7 @@ void StartTaskRxCommands(void *argument)
 						flags |= (is_error << 1);
 						if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
 						IDN=1;
-						if (MSV==1&&ADR==0) {	// Анализируем третий символ, отвечающий за конкретный БК
+						if (MSV0==1&&ADR==0) {	// Анализируем третий символ, отвечающий за конкретный БК
 
 							uint8_t buf[4] = {0,0,0,0};
 							//uint32_t val = (ads_val*100)/421 ;
@@ -490,18 +496,39 @@ void StartTaskRxCommands(void *argument)
 							debug("Transmit to terminal: <%x>",
 									buf);
 						}
-						if (ADR==1) {	// Анализируем третий символ, отвечающий за конкретный БК
+						if (ADR==1&&MSV==0) {	// Анализируем третий символ, отвечающий за конкретный БК
 							 char str_adr[20];
 							 sprintf(str_adr,"%c%c\r\n",sensor_inf.platform_adr[0],sensor_inf.platform_adr[1]);
 							 HAL_UART_Transmit_IT(terminal_uart, (uint8_t*)str_adr, strlen(str_adr));
 
 							 ADR=0;
-												}
+						}
+						if (MSV==1&&ADR==0&&MSV0==0) {	// Анализируем третий символ, отвечающий за конкретный БК
+
+						   uint8_t buf[4] = {0,0,0,0};
+													//uint32_t val = (ads_val*100)/421 ;
+													//uint32_t val = (8388607*100)/421 ;
+													    //uint32_t val =  1401366;
+						   uint32_t val = (ads_val);
+															//	отправ	EE FF 0B 00
+													//0x78730B00;
+						   buf[3] = (val >> (2*8)) & 0xFF;
+						   buf[2] = (val >> (1*8)) & 0xFF;
+						   buf[1] = (val >> (0*8)) & 0xFF;
+						   buf[0] = buf[1]^buf[2]^buf[3];
+
+							HAL_UART_Transmit_IT(terminal_uart, buf, 4);
+							debug("Transmit to terminal: <%x>",
+							buf);
+
+							MSV=0;
+						}
+
 
 							terminal_parser_state =	PARSER_EMPT;
 					}
 
-			if (terminal_parser_state == PARSER_MSV70) { // если посылка S0x;
+			if (terminal_parser_state == PARSER_MSV70) { // если посылка Sxx;
 
 
 
@@ -512,13 +539,30 @@ void StartTaskRxCommands(void *argument)
 
 										// Анализируем третий символ, отвечающий за конкретный БК
 
-										MSV=1;
+										MSV0=1;
 										//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
 										debug("Transmit to terminal: <%x>",
-												&MSV);
+												&MSV0);
 										terminal_parser_state =	PARSER_EMPT;
 
 								}
+			if (terminal_parser_state == PARSER_MSV7) { // если посылка Sxx;
+
+
+
+					uint8_t flags = 0;
+					flags |= (case_opened << 0);
+					flags |= (is_error << 1);
+				if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
+
+						// Анализируем третий символ, отвечающий за конкретный БК
+
+						MSV=1;
+				//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
+				debug("Transmit to terminal: <%x>",&MSV);
+				terminal_parser_state =	PARSER_EMPT;
+
+			}
 			if (terminal_parser_state == PARSER_ADR7) { // если посылка S0x;
 
 
@@ -571,6 +615,46 @@ void StartTaskRxCommands(void *argument)
 				 terminal_parser_state =PARSER_EMPT;
 
 			}
+
+			if (terminal_parser_state == PARSER_BDR) { // если посылка S0x;
+
+
+							uint8_t flags = 0;
+							flags |= (case_opened << 0);
+							flags |= (is_error << 1);
+							if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
+							received_BDR=0;
+
+							for (int i = 0; i < 22; i++) {
+								if (received_command[i] != ';') {
+									END_Cmd = END_Cmd+1;
+								}
+								if (received_command[i] == ';') {
+									i=22;
+								}
+							}
+
+							for (int i = 3; i < END_Cmd; i++) {
+								if (received_command[i] >= '0' && received_command[i] <= '9') {
+									received_BDR = received_BDR * 10 + (received_command[i] - '0');
+								}
+
+							}
+				  HAL_UART_Abort_IT(&huart2);
+				  HAL_UART_DeInit(&huart2);
+				  huart2.Init.BaudRate = received_BDR;
+				  HAL_UART_Init(&huart2);
+				  if (HAL_UART_DeInit(&huart2) != HAL_OK) {
+
+				      Error_Handler();
+				  }
+
+
+							 terminal_parser_state =PARSER_EMPT;
+
+						}
+
+
 
 			if (terminal_parser_state == PARSER_IDN7) { // если посылка S0x;
 
@@ -708,7 +792,7 @@ void StartSensorsPolling(void *argument)
 						debug("LPS22HB TEMP: %f LPS22HB PRESSURE: %f\n\r",
 								LPS_data.last_temperature,
 								LPS_data.last_pressure);
-
+			HAL_UART_Transmit_IT(terminal_uart, "RAW",20);
 //			hdc1080_start_measurement(&HDC_config.last_temperature, &HDC_config.last_humidity);
 //			debug("HDC1080 RAW TEMP: 0x%4x RAW HUMIDITY: 0x%4x\r\n",
 //					HDC_config.last_temperature,
@@ -778,43 +862,14 @@ void maximumsPeriodTimer_callback(void *argument)
 /* USER CODE BEGIN Application */
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функция завершения приема данных
-//	if(huart == &huart2) {
-//		extended_debug("Current state = %d, receive <%c>\r\n", terminal_parser_state, received_command[terminal_parser_state]);
-//
-//		switch (terminal_parser_state) {
-//		case PARSER_WAITING_START:
-//			if ((RX_command_buff[0] == 'S'||RX_command_buff[0] == 'M'||RX_command_buff[0] == 'I')&&RX_command_count==0) {
-//				received_command[RX_command_count]=RX_command_buff[0];
-//				RX_command_count=1;
-//			}
-//			else if (RX_command_buff[0]!= ';'&&RX_command_count!=0&&RX_command_count<=6) {
-//				received_command[RX_command_count]=RX_command_buff[0];
-//				RX_command_count=RX_command_count+1;
-//			}
-//			else if (RX_command_buff[0]== ';'&&RX_command_count!=0) {
-//				received_command[RX_command_count]=RX_command_buff[0];
-//				RX_command_count=0;
-//				terminal_parser_state = PARSER_WAITING_TASK;
-//			}
-//			else{
-//				RX_command_count = 0;
-//				RX_command_buff[0] = 0;
-//			}
-//			break;
-//		case PARSER_WAITING_TASK:
-//			break;
-//		}
-//		extended_debug("New state = %d\r\n", terminal_parser_state);
-//		HAL_UART_Receive_IT(terminal_uart, RX_command_buff, 1);
-//		extended_debug("Receive from handler\r\n");
-//	}
+
 	BaseType_t xHigherPriorityTaskWoken;
 	xHigherPriorityTaskWoken = pdFALSE;
 
 	if(huart == &huart2) {
 			//extended_debug("Current state = %d, receive <%c>\r\n", terminal_parser_state, received_command[terminal_parser_state]);
 
-			if ((RX_command_buff[0] == 'S'||RX_command_buff[0] == 'M'||RX_command_buff[0] == 'I'||RX_command_buff[0] == 'A')&&RX_command_count==0) {
+			if ((RX_command_buff[0] == 'S'||RX_command_buff[0] == 'M'||RX_command_buff[0] == 'I'||RX_command_buff[0] == 'B'||RX_command_buff[0] == 'A')&&RX_command_count==0) {
 				received_command[RX_command_count]=RX_command_buff[0];
 				RX_command_count=RX_command_count+1;
 			}
@@ -848,6 +903,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функц�
 
 					terminal_parser_state = PARSER_MSV70;
 				}
+				else if (received_command[0]=='M'&&received_command[1]=='S'&&received_command[2]=='V'&&received_command[3]=='?'&&received_command[4]!='0') {
+
+					terminal_parser_state = PARSER_MSV7;
+				}
 				else if (received_command[0]=='I'&&received_command[1]=='D'&&received_command[2]=='N'&&received_command[3]=='?') {
 
 					terminal_parser_state = PARSER_IDN7;
@@ -860,6 +919,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функц�
 
 					terminal_parser_state = PARSER_ADRNUM;
 					}
+				else if (received_command[0]=='B'&&received_command[1]=='D'&&received_command[2]=='R') {
+
+				     terminal_parser_state = PARSER_BDR;
+				}
 				RX_command_count = 0;
 				RX_command_buff[0] = 0;
 				vTaskNotifyGiveFromISR( rxCommandsTaskHandle, &xHigherPriorityTaskWoken );
