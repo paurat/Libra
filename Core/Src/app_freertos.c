@@ -94,7 +94,7 @@ void ADS_Callback(uint32_t value);
 uint8_t transmitting_command[22];
 uint8_t received_command[22];	//буфер приема данных от терминала
 uint16_t received_number = 0;
-uint32_t received_BDR = 0;
+//uint32_t received_BDR = 0;
 uint32_t ads_val;
 uint8_t is_data_received = 0;
 uint32_t test1 = 0x78730B00;
@@ -124,9 +124,10 @@ platform_switches_state_t platform_number= {'0','0'};
 
 //const char str_idn[]="HBM,C16iC3/30t     ,3319402,P80\r\n";
 struct sensor_inf {
-	uint8_t platform_adr[8];
+	uint8_t platform_adr[2];
+	uint32_t received_BDR;
 	//uint8_t crc_platform;
-} sensor_inf;
+} sensor_inf __attribute__((aligned(8)));
 int offset = 0;
 uint16_t serial_number =0;// СЕРИЙНЫЙ НОМЕР ПЛАТЫ (от 0 до 65535 включительно)
 int16_t serial_number_control=0;
@@ -225,11 +226,11 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+
 	serial_number =(uint16_t)(crc32b((uint8_t *)UID_BASE, 8));
 	serial_number_control = abs((int16_t)serial_number);
 	ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 	//memset(transmitting_command, 0, sizeof(transmitting_command));
-	int Over8_reg=USART_CR1_OVER8;
 	while (sensor_inf.platform_adr[0]!=0xFF)
 	{
 		if(offset>=248){
@@ -247,6 +248,7 @@ void MX_FREERTOS_Init(void) {
 		memset(&sensor_inf, 0, sizeof(sensor_inf));
 		sensor_inf.platform_adr[0]='0';
 		sensor_inf.platform_adr[1]='1';
+		sensor_inf.received_BDR=38400;
 		WriteDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 		offset+=sizeof(sensor_inf);
 	}
@@ -256,6 +258,17 @@ void MX_FREERTOS_Init(void) {
 		ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 		offset+=sizeof(sensor_inf);
 	}
+
+	 while (!(USART2->ISR & USART_ISR_TC)) {
+	 // Ожидание, пока передача завершится
+	 }
+
+	 // Отключаем USART перед изменением настроек
+	 USART2->CR1 &= ~USART_CR1_UE;
+     // Изменение скорости
+	 USART2->BRR = (SystemCoreClock+12800) / sensor_inf.received_BDR;
+	 // Включаем USART обратно
+	 USART2->CR1 |= USART_CR1_UE;
 
 	//ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 	//offset+=sizeof(sensor_inf);
@@ -623,7 +636,7 @@ void StartTaskRxCommands(void *argument)
 							flags |= (case_opened << 0);
 							flags |= (is_error << 1);
 							if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
-							received_BDR=0;
+							sensor_inf.received_BDR=0;
 
 							for (int i = 0; i < 22; i++) {
 								if (received_command[i] != ';') {
@@ -636,19 +649,28 @@ void StartTaskRxCommands(void *argument)
 
 							for (int i = 3; i < END_Cmd; i++) {
 								if (received_command[i] >= '0' && received_command[i] <= '9') {
-									received_BDR = received_BDR * 10 + (received_command[i] - '0');
+									sensor_inf.received_BDR = sensor_inf.received_BDR * 10 + (received_command[i] - '0');
 								}
 
 							}
-				  HAL_UART_Abort_IT(&huart2);
-				  HAL_UART_DeInit(&huart2);
-				  huart2.Init.BaudRate = received_BDR;
-				  HAL_UART_Init(&huart2);
-				  if (HAL_UART_DeInit(&huart2) != HAL_OK) {
 
-				      Error_Handler();
-				  }
+				  while (!(USART2->ISR & USART_ISR_TC)) {
+				         // Ожидание, пока передача завершится
+				     }
 
+				     // Отключаем USART перед изменением настроек
+				     USART2->CR1 &= ~USART_CR1_UE;
+
+				     // Изменение скорости
+				     USART2->BRR = (SystemCoreClock+12800) / sensor_inf.received_BDR;
+
+				     // Включаем USART обратно
+				     USART2->CR1 |= USART_CR1_UE;
+
+				     taskENTER_CRITICAL();
+				     WriteDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
+				     taskEXIT_CRITICAL();
+				     offset+=sizeof(sensor_inf);
 
 							 terminal_parser_state =PARSER_EMPT;
 
@@ -792,7 +814,6 @@ void StartSensorsPolling(void *argument)
 						debug("LPS22HB TEMP: %f LPS22HB PRESSURE: %f\n\r",
 								LPS_data.last_temperature,
 								LPS_data.last_pressure);
-			HAL_UART_Transmit_IT(terminal_uart, "RAW",20);
 //			hdc1080_start_measurement(&HDC_config.last_temperature, &HDC_config.last_humidity);
 //			debug("HDC1080 RAW TEMP: 0x%4x RAW HUMIDITY: 0x%4x\r\n",
 //					HDC_config.last_temperature,
