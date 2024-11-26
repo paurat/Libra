@@ -129,7 +129,7 @@ struct sensor_inf {
 	//uint8_t crc_platform;
 } sensor_inf __attribute__((aligned(8)));
 int offset = 0;
-uint16_t serial_number =0;// СЕРИЙНЫЙ НОМЕР ПЛАТЫ (от 0 до 65535 включительно)
+uint16_t serial_number =0;// СЕР�?ЙНЫЙ НОМЕР ПЛАТЫ (от 0 до 65535 включительно)
 int16_t serial_number_control=0;
 bool is_error = 0;
 bool case_opened = 0;
@@ -265,7 +265,7 @@ void MX_FREERTOS_Init(void) {
 
 	 // Отключаем USART перед изменением настроек
 	 USART2->CR1 &= ~USART_CR1_UE;
-     // Изменение скорости
+     // �?зменение скорости
 	 USART2->BRR = (SystemCoreClock+12800) / sensor_inf.received_BDR;
 	 // Включаем USART обратно
 	 USART2->CR1 |= USART_CR1_UE;
@@ -462,6 +462,8 @@ void StartTaskRxCommands(void *argument)
 					memcpy(&transmitting_command[16], &max_acceleration_in_period, 4);
 					memcpy(&transmitting_command[20], &serial_number_control, 2);
 
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+
 					HAL_UART_Transmit_IT(terminal_uart, transmitting_command, 22);
 
 					//memset(transmitting_command, 0, sizeof(transmitting_command));
@@ -505,6 +507,10 @@ void StartTaskRxCommands(void *argument)
 							    buf[1] = (val >> (0*8)) & 0xFF;
 							    buf[0] = buf[1]^buf[2]^buf[3];
 
+
+
+							HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+
 							HAL_UART_Transmit_IT(terminal_uart, buf, 4);
 							debug("Transmit to terminal: <%x>",
 									buf);
@@ -512,6 +518,8 @@ void StartTaskRxCommands(void *argument)
 						if (ADR==1&&MSV==0) {	// Анализируем третий символ, отвечающий за конкретный БК
 							 char str_adr[20];
 							 sprintf(str_adr,"%c%c\r\n",sensor_inf.platform_adr[0],sensor_inf.platform_adr[1]);
+
+							 HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 							 HAL_UART_Transmit_IT(terminal_uart, (uint8_t*)str_adr, strlen(str_adr));
 
 							 ADR=0;
@@ -530,6 +538,8 @@ void StartTaskRxCommands(void *argument)
 						   buf[1] = (val >> (0*8)) & 0xFF;
 						   buf[0] = buf[1]^buf[2]^buf[3];
 
+
+						    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 							HAL_UART_Transmit_IT(terminal_uart, buf, 4);
 							debug("Transmit to terminal: <%x>",
 							buf);
@@ -661,7 +671,7 @@ void StartTaskRxCommands(void *argument)
 				     // Отключаем USART перед изменением настроек
 				     USART2->CR1 &= ~USART_CR1_UE;
 
-				     // Изменение скорости
+				     // �?зменение скорости
 				     USART2->BRR = (SystemCoreClock+12800) / sensor_inf.received_BDR;
 
 				     // Включаем USART обратно
@@ -690,6 +700,7 @@ void StartTaskRxCommands(void *argument)
 				char str_idn[50];
 				sprintf(str_idn,"CAS,BCA5/5kg     ,%d,P80\r\n",serial_number);
 
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*)str_idn, strlen(str_idn));
 					IDN=0;
 					terminal_parser_state =	PARSER_EMPT;
@@ -958,6 +969,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функц�
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функция завершения передачи данных
+	if (huart == &huart2 ) {
+		//osDelay(1);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_RESET);
+	}
 	if (huart == debug_uart) {
 		reset_debug_variables();
 	}

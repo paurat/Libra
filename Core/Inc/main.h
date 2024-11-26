@@ -109,6 +109,8 @@ void Error_Handler(void);
 #define LED_ERROR_GPIO_Port GPIOD
 #define LED_STATUS_Pin GPIO_PIN_3
 #define LED_STATUS_GPIO_Port GPIOD
+#define USART2DE_Pin GPIO_PIN_4
+#define USART2DE_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 
