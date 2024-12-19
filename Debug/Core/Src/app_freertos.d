@@ -53,7 +53,9 @@ Core/Src/app_freertos.o: ../Core/Src/app_freertos.c \
  ../Core/Inc/lps22.h ../Core/Inc/debug.h ../Core/Inc/usart.h \
  ../Core/Inc/lis331dlh.h ../Core/Inc/stm32g0xx_it.h ../Core/Inc/MyFlash.h \
  ../Core/Inc/calc_length.h ../Core/Inc/debug.h ../Core/Inc/hdc1080.h \
- ../Core/Inc/sensors_state.h ../Core/Inc/rtc.h ../Core/Inc/ADS1232.h
+ ../Core/Inc/sensors_state.h ../Core/Inc/rtc.h ../Core/Inc/ADS1232.h \
+ ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h:
@@ -124,3 +126,5 @@ Core/Src/app_freertos.o: ../Core/Src/app_freertos.c \
 ../Core/Inc/sensors_state.h:
 ../Core/Inc/rtc.h:
 ../Core/Inc/ADS1232.h:
+../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:

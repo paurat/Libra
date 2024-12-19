@@ -28,12 +28,14 @@
 #include "usart.h"
 #include "gpio.h"
 
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "hardware_check.h"
 #include "debug.h"
 #include <string.h>
 #include "stm32g0xx_hal_uart.h"
+#include "queue.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -138,8 +140,8 @@ int main(void)
  // }
 
 
-  debug("\r\n\r\nInited\r\n");
-  HAL_UART_Transmit_IT(terminal_uart, "123456789\r\n", 12);
+ // debug("\r\n\r\nInited\r\n");
+ // HAL_UART_Transmit_IT(terminal_uart, "123456789\r\n", 12);
   /* USER CODE END 2 */
 
   /* Init scheduler */

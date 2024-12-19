@@ -52,7 +52,9 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Core/Inc/hardware_check.h ../Core/Inc/i2c.h ../Core/Inc/spi.h \
  ../Core/Inc/hdc1080.h ../Core/Inc/sensors_state.h ../Core/Inc/lps22.h \
  ../Core/Inc/debug.h ../Core/Inc/usart.h ../Core/Inc/lis331dlh.h \
- ../Core/Inc/debug.h
+ ../Core/Inc/debug.h \
+ ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
+ ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 ../Core/Inc/main.h:
 ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal.h:
 ../Core/Inc/stm32g0xx_hal_conf.h:
@@ -119,3 +121,5 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/usart.h:
 ../Core/Inc/lis331dlh.h:
 ../Core/Inc/debug.h:
+../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h:
+../Middlewares/Third_Party/FreeRTOS/Source/include/task.h:

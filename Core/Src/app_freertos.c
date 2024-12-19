@@ -52,6 +52,7 @@
 #include <stdbool.h>
 #include "rtc.h"
 #include "ADS1232.h"
+#include "queue.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -66,9 +67,9 @@ typedef enum {
 		PARSER_IDN7,
 		PARSER_ADR7,
 		PARSER_ADRNUM,
+		PARSER_STP,
 		PARSER_EMPT
 } parser_state_t; //7==?
-
 
 struct SensorsState sensorsState;
 
@@ -91,6 +92,7 @@ void ADS_Callback(uint32_t value);
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+
 uint8_t transmitting_command[22];
 uint8_t received_command[22];	//буфер приема данных от терминала
 uint16_t received_number = 0;
@@ -140,8 +142,7 @@ float maximum_move_in_period = 0;
 float max_acceleration_in_period = 0;
 
 extern TIM_HandleTypeDef htim2;
-
-
+xQueueHandle g_mesQueue;
 /* USER CODE END Variables */
 /* Definitions for debugTask */
 osThreadId_t debugTaskHandle;
@@ -227,6 +228,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
+	g_mesQueue = xQueueCreate(2, 22);
 	serial_number =(uint16_t)(crc32b((uint8_t *)UID_BASE, 8));
 	serial_number_control = abs((int16_t)serial_number);
 	ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
@@ -348,8 +350,8 @@ void StartDebugTask(void *argument)
 	get_platform_number();
 
 	osTimerStart(maximumsPeriodTimerHandle, timer_period);	// запуск таймера с периодом срабатывания 10 минут
-	debug("\r\nSN: %05d\r\n", serial_number);
-	debug("\r\nMax mediums timer set to %d ms\r\n", timer_period);
+//	debug("\r\nSN: %05d\r\n", serial_number);
+//	debug("\r\nMax mediums timer set to %d ms\r\n", timer_period);
 
 	if (!debug_enabled()) {
 
@@ -392,9 +394,9 @@ void StartDebugTask(void *argument)
 				max_acceleration, maximum_move,
 				max_acceleration_in_period, maximum_move_in_period);
 
-			if (size > 0) {
-				HAL_UART_Transmit(debug_uart, message, size, 100);
-			}
+//			if (size > 0) {
+//			//	HAL_UART_Transmit(debug_uart, message, size, 100);
+//			}
 
 		}
 
@@ -425,17 +427,23 @@ void StartTaskRxCommands(void *argument)
 	  receive(terminal_uart, RX_command_buff, 1);
 	for (;;) {
 
-		    ulNotifiedValue = ulTaskNotifyTake( pdFALSE, xBlockTime );
+//		    ulNotifiedValue = ulTaskNotifyTake( pdFALSE, xBlockTime );
 
-		    if( ulNotifiedValue == 0 )
+		    if( uxQueueMessagesWaiting(g_mesQueue) == 0 )
 			{
 		    	continue;
 			}
 
+
+		    uint8_t receive_buf[22];
+		    xQueueReceive(g_mesQueue, receive_buf, 0);
 			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, GPIO_PIN_SET);
 
-			debug("Received <<%s>>\r\n", received_command);
-
+			debug("Received <<%s>>\r\n", receive_buf);
+//			if (strlen(receive_buf)==0){
+//
+//				osDelay(1);
+//			}
 			if (terminal_parser_state == PARSER_S4x) { // если посылка S4x;
 
 				float maximum = fmax(
@@ -467,6 +475,7 @@ void StartTaskRxCommands(void *argument)
 					HAL_UART_Transmit_IT(terminal_uart, transmitting_command, 22);
 
 					//memset(transmitting_command, 0, sizeof(transmitting_command));
+				//	memset(receive_buf, 0, sizeof(receive_buf));
 					terminal_parser_state =	PARSER_EMPT;
 
 					debug("Transmit to terminal: <%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x>",
@@ -492,9 +501,16 @@ void StartTaskRxCommands(void *argument)
 						flags |= (case_opened << 0);
 						flags |= (is_error << 1);
 						if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
-						IDN=1;
-						if (MSV0==1&&ADR==0) {	// Анализируем третий символ, отвечающий за конкретный БК
 
+
+						if (MSV==0&&ADR==0&&MSV0==0) {
+
+							IDN=1;
+
+						}
+
+						if (MSV0==1&&ADR==0) {	// Анализируем третий символ, отвечающий за конкретный БК
+							IDN=0;
 							uint8_t buf[4] = {0,0,0,0};
 							//uint32_t val = (ads_val*100)/421 ;
 							//uint32_t val = (8388607*100)/421 ;
@@ -515,7 +531,7 @@ void StartTaskRxCommands(void *argument)
 							debug("Transmit to terminal: <%x>",
 									buf);
 						}
-						if (ADR==1&&MSV==0) {	// Анализируем третий символ, отвечающий за конкретный БК
+						if (ADR==1&&MSV0==0) {	// Анализируем третий символ, отвечающий за конкретный БК
 							 char str_adr[20];
 							 sprintf(str_adr,"%c%c\r\n",sensor_inf.platform_adr[0],sensor_inf.platform_adr[1]);
 
@@ -547,7 +563,7 @@ void StartTaskRxCommands(void *argument)
 							MSV=0;
 						}
 
-
+					//		memset(receive_buf, 0, sizeof(receive_buf));
 							terminal_parser_state =	PARSER_EMPT;
 					}
 
@@ -564,8 +580,8 @@ void StartTaskRxCommands(void *argument)
 
 										MSV0=1;
 										//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
-										debug("Transmit to terminal: <%x>",
-												&MSV0);
+										debug("Transmit to terminal: <%x>",&MSV0);
+									//	memset(receive_buf, 0, sizeof(receive_buf));
 										terminal_parser_state =	PARSER_EMPT;
 
 								}
@@ -583,9 +599,31 @@ void StartTaskRxCommands(void *argument)
 						MSV=1;
 				//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
 				debug("Transmit to terminal: <%x>",&MSV);
+			//	memset(receive_buf, 0, sizeof(receive_buf));
 				terminal_parser_state =	PARSER_EMPT;
 
 			}
+
+			if (terminal_parser_state == PARSER_STP) { // если посылка Sxx;
+
+
+
+				uint8_t flags = 0;
+				flags |= (case_opened << 0);
+				flags |= (is_error << 1);
+			     if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
+
+				// Анализируем третий символ, отвечающий за конкретный БК
+			    ADR=0;
+			    MSV=0;
+				MSV0=0;
+				//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
+			//	memset(receive_buf, 0, sizeof(receive_buf));
+				terminal_parser_state =	PARSER_EMPT;
+
+			}
+
+
 			if (terminal_parser_state == PARSER_ADR7) { // если посылка S0x;
 
 
@@ -597,9 +635,11 @@ void StartTaskRxCommands(void *argument)
 
 				// Анализируем третий символ, отвечающий за конкретный БК
 				ADR=1;
+			//	memset(receive_buf, 0, sizeof(receive_buf));
 				terminal_parser_state =	PARSER_EMPT;
 
 				}
+
 			if (terminal_parser_state == PARSER_ADRNUM) { // если посылка S0x;
 
 
@@ -609,8 +649,8 @@ void StartTaskRxCommands(void *argument)
 				if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
 				received_number=0;
 				for (int i = 7; i < 14; i++) {
-					if (received_command[i] >= '0' && received_command[i] <= '9') {
-						received_number = received_number * 10 + (received_command[i] - '0');
+					if (receive_buf[i] >= '0' && receive_buf[i] <= '9') {
+						received_number = received_number * 10 + (receive_buf[i] - '0');
 					}
 
 				}
@@ -618,8 +658,8 @@ void StartTaskRxCommands(void *argument)
 				// Проверка serial_number
 				 if (received_number == serial_number) {
 					 memset(sensor_inf.platform_adr, '0', sizeof(sensor_inf.platform_adr));
-					 sensor_inf.platform_adr[0]=received_command[3];
-					 sensor_inf.platform_adr[1]=received_command[4];
+					 sensor_inf.platform_adr[0]=receive_buf[3];
+					 sensor_inf.platform_adr[1]=receive_buf[4];
 					// clearFlash();
 					 //offset=0;
 					 if(offset>=248){
@@ -633,7 +673,7 @@ void StartTaskRxCommands(void *argument)
 
 					 offset+=sizeof(sensor_inf);
 				 }
-
+			//	 memset(receive_buf, 0, sizeof(receive_buf));
 				 //sensor_inf.crc_platform=(uint8_t)(crc32b((uint8_t *)sensor_inf.platform_adr, 2));
 				 terminal_parser_state =PARSER_EMPT;
 
@@ -649,17 +689,17 @@ void StartTaskRxCommands(void *argument)
 							sensor_inf.received_BDR=0;
 
 							for (int i = 0; i < 22; i++) {
-								if (received_command[i] != ';') {
+								if (receive_buf[i] != ';') {
 									END_Cmd = END_Cmd+1;
 								}
-								if (received_command[i] == ';') {
+								if (receive_buf[i] == ';') {
 									i=22;
 								}
 							}
 
 							for (int i = 3; i < END_Cmd; i++) {
-								if (received_command[i] >= '0' && received_command[i] <= '9') {
-									sensor_inf.received_BDR = sensor_inf.received_BDR * 10 + (received_command[i] - '0');
+								if (receive_buf[i] >= '0' && receive_buf[i] <= '9') {
+									sensor_inf.received_BDR = sensor_inf.received_BDR * 10 + (receive_buf[i] - '0');
 								}
 
 							}
@@ -681,7 +721,7 @@ void StartTaskRxCommands(void *argument)
 				     WriteDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 				     taskEXIT_CRITICAL();
 				     offset+=sizeof(sensor_inf);
-
+				 //    memset(receive_buf, 0, sizeof(receive_buf));
 							 terminal_parser_state =PARSER_EMPT;
 
 						}
@@ -697,19 +737,21 @@ void StartTaskRxCommands(void *argument)
 				flags |= (is_error << 1);
 				if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
 				if(IDN==1){
-				char str_idn[50];
+				uint8_t str_idn[50];
+				memset(str_idn, 0, sizeof(str_idn));
 				sprintf(str_idn,"CAS,BCA5/5kg     ,%d,P80\r\n",serial_number);
 
 					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*)str_idn, strlen(str_idn));
 					IDN=0;
+			//		memset(receive_buf, 0, sizeof(receive_buf));
 					terminal_parser_state =	PARSER_EMPT;
 					//debug("Transmit to terminal: <%x>", &str_idn);
 				}
 			}
 
-			memset(received_command, 0, sizeof(received_command));
-			//receive(terminal_uart, received_command, 1);
+			//memset(receive_buf, 0, sizeof(receive_buf));
+			//receive(terminal_uart, receive_buf, 1);
 			//receive(terminal_uart, RX_command_buff, 1);
 			debug("Receive from task\r\n");
 		}
@@ -728,7 +770,7 @@ void StartTaskAccelerometer(void *argument)
   /* USER CODE BEGIN StartTaskAccelerometer */
   /* Infinite loop */
 	if(lis331dlh_init_spi(&config, ACCELEROMETER_SPI, ACCEL_CS_GPIO_Port, ACCEL_CS_Pin)) {
-		debug("LIS331DLH DOESN'T WORK OR DOESN'T SOLDERED");
+		//debug("LIS331DLH DOESN'T WORK OR DOESN'T SOLDERED");
 		HardFault_Handler();
 	}
 	lis331dlh_update_config(&config);
@@ -766,13 +808,13 @@ void StartTaskAccelerometer(void *argument)
 				round_and_limit_float(get_max_negative_acceleration()));
 
 		if(period_expired) {
-			debug("\r\nTaskAccelerometer: Timer done. current maximum = %f maximum_in_period = %f current max_acceleration = %f max_acceleration_in_period = %f \r\n",
-					maximum, maximum_move_in_period,
-					max_acceleration, max_acceleration_in_period);
-			period_expired = false;
-			maximum_move_in_period = 0;
-			max_acceleration_in_period = 0;
-			debug("\r\nTaskAccelerometer: Timer resetted. maximum_in_period = %f max_acceleration_in_period = %f \r\n", maximum_move_in_period, max_acceleration_in_period);
+		//	debug("\r\nTaskAccelerometer: Timer done. current maximum = %f maximum_in_period = %f current max_acceleration = %f max_acceleration_in_period = %f \r\n",
+//					maximum, maximum_move_in_period,
+//					max_acceleration, max_acceleration_in_period);
+//			period_expired = false;
+//			maximum_move_in_period = 0;
+//			max_acceleration_in_period = 0;
+		//	debug("\r\nTaskAccelerometer: Timer resetted. maximum_in_period = %f max_acceleration_in_period = %f \r\n", maximum_move_in_period, max_acceleration_in_period);
 		}
 
 		if(maximum > maximum_move_in_period) maximum_move_in_period = maximum;
@@ -796,12 +838,12 @@ void StartSensorsPolling(void *argument)
 	//vTaskDelay(200);
 	taskENTER_CRITICAL();
 	if(!hdc1080_init(SENSORS_I2C, HDC_config.temperature_resolution, HDC_config.humidity_resolution)) {
-		debug("HDC1080 DOESN'T WORK OR DOESN'T SOLDERED");
+		//debug("HDC1080 DOESN'T WORK OR DOESN'T SOLDERED");
 		HardFault_Handler();
 	}
 
 	if(!lps22hb_init(SENSORS_I2C)) {
-		debug("LPS22HB DOESN'T WORK OR DOESN'T SOLDERED");
+		//debug("LPS22HB DOESN'T WORK OR DOESN'T SOLDERED");
 		HardFault_Handler();
 	}
 	taskEXIT_CRITICAL();
@@ -816,15 +858,15 @@ void StartSensorsPolling(void *argument)
 		if (lps22hb_check_pressure_data_available(status) && lps22hb_check_temperature_data_available(status))
 		{
 			hdc1080_start_measurement(&HDC_config.last_temperature, &HDC_config.last_humidity);
-						debug("HDC1080 TEMP: %f HDC1080 HUMIDITY: %f\n\r",
-								HDC_config.last_temperature,
-								HDC_config.last_humidity);
+						//debug("HDC1080 TEMP: %f HDC1080 HUMIDITY: %f\n\r",
+//								HDC_config.last_temperature,
+//								HDC_config.last_humidity);
 
 						LPS_data.last_pressure = lps22hb_read_pressure();
 						LPS_data.last_temperature = lps22hb_read_temperature();
-						debug("LPS22HB TEMP: %f LPS22HB PRESSURE: %f\n\r",
-								LPS_data.last_temperature,
-								LPS_data.last_pressure);
+						//debug("LPS22HB TEMP: %f LPS22HB PRESSURE: %f\n\r",
+//								LPS_data.last_temperature,
+//								LPS_data.last_pressure);
 //			hdc1080_start_measurement(&HDC_config.last_temperature, &HDC_config.last_humidity);
 //			debug("HDC1080 RAW TEMP: 0x%4x RAW HUMIDITY: 0x%4x\r\n",
 //					HDC_config.last_temperature,
@@ -885,7 +927,7 @@ void StartADS1232Task(void *argument)
 void maximumsPeriodTimer_callback(void *argument)
 {
   /* USER CODE BEGIN maximumsPeriodTimer_callback */
-	debug("\r\n===Timer 10 minutes: reloaded===\r\n");
+	//debug("\r\n===Timer 10 minutes: reloaded===\r\n");
 	period_expired = true;
   /* USER CODE END maximumsPeriodTimer_callback */
 }
@@ -895,11 +937,15 @@ void maximumsPeriodTimer_callback(void *argument)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функция завершения приема данных
 
-	BaseType_t xHigherPriorityTaskWoken;
-	xHigherPriorityTaskWoken = pdFALSE;
+	//BaseType_t xHigherPriorityTaskWoken;
+	//xHigherPriorityTaskWoken = pdFALSE;
 
 	if(huart == &huart2) {
-			//extended_debug("Current state = %d, receive <%c>\r\n", terminal_parser_state, received_command[terminal_parser_state]);
+			//extended_debug("Current state = %d, receive <%c>\r\n", terminal_parser_state, receive_buf[terminal_parser_state]);
+
+//			if (RX_command_buff[0] == 0){
+//				osDelay(1);
+//			}
 
 			if ((RX_command_buff[0] == 'S'||RX_command_buff[0] == 'M'||RX_command_buff[0] == 'I'||RX_command_buff[0] == 'B'||RX_command_buff[0] == 'A')&&RX_command_count==0) {
 				received_command[RX_command_count]=RX_command_buff[0];
@@ -930,6 +976,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функц�
 
 						terminal_parser_state = PARSER_S98; //(Ничего не отвечаем)
 					}
+					else if (received_command[1]=='T'&&received_command[2]=='P'){
+
+						terminal_parser_state = PARSER_STP; //(становка передачи сбрасываем MSV?0)
+					}
 				}
 				else if (received_command[0]=='M'&&received_command[1]=='S'&&received_command[2]=='V'&&received_command[3]=='?'&&received_command[4]=='0') {
 
@@ -956,10 +1006,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функц�
 				     terminal_parser_state = PARSER_BDR;
 				}
 				RX_command_count = 0;
-				RX_command_buff[0] = 0;
-				vTaskNotifyGiveFromISR( rxCommandsTaskHandle, &xHigherPriorityTaskWoken );
+			//	RX_command_buff[0] = 0;
+				//vTaskNotifyGiveFromISR( rxCommandsTaskHandle, &xHigherPriorityTaskWoken );
+				xQueueSendToBack(g_mesQueue, received_command, 0);
+				memset(received_command,0,sizeof(received_command));
 			}
 		extended_debug("New state = %d\r\n", terminal_parser_state);
+		RX_command_buff[0] = 0;
 		HAL_UART_Receive_IT(terminal_uart, RX_command_buff, 1);
 		extended_debug("Receive from handler\r\n");
 		}
@@ -1001,7 +1054,7 @@ void ADS_Callback(uint32_t value){
 		char ADS_val_prin[50]; //size of the number
 		int len5 =  sprintf(ADS_val_prin, "ADS_VAL: %d\n\r", ads_val);
 
-		HAL_UART_Transmit (&huart3, ADS_val_prin, len5, 100);
+		//HAL_UART_Transmit (&huart3, ADS_val_prin, len5, 100);
 
 }
 /* USER CODE END Application */
