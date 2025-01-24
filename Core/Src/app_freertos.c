@@ -68,7 +68,8 @@ typedef enum {
 		PARSER_ADR7,
 		PARSER_ADRNUM,
 		PARSER_STP,
-		PARSER_EMPT
+		PARSER_EMPT,
+		PARSER_DEGREE
 } parser_state_t; //7==?
 
 struct SensorsState sensorsState;
@@ -495,96 +496,91 @@ void StartTaskRxCommands(void *argument)
 
 			if (terminal_parser_state == PARSER_Sxx) { // если посылка S0x;
 
+				uint8_t flags = 0;
+				flags |= (case_opened << 0);
+				flags |= (is_error << 1);
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
 
+				if (MSV == 0 && ADR == 0 && MSV0 == 0) {
 
-						uint8_t flags = 0;
-						flags |= (case_opened << 0);
-						flags |= (is_error << 1);
-						if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
+					IDN = 1;
 
+				}
 
-						if (MSV==0&&ADR==0&&MSV0==0) {
+				if (MSV0 == 1 && ADR == 0) {// Анализируем третий символ, отвечающий за конкретный БК
+					IDN = 0;
+					uint8_t buf[4] = { 0, 0, 0, 0 };
+					//uint32_t val = (ads_val*100)/421 ;
+					//uint32_t val = (8388607*100)/421 ;
+					//uint32_t val =  1401366;
+					uint32_t val = (ads_val);
+					//	отправ	EE FF 0B 00
+					//0x78730B00;
+					buf[3] = (val >> (2 * 8)) & 0xFF;
+					buf[2] = (val >> (1 * 8)) & 0xFF;
+					buf[1] = (val >> (0 * 8)) & 0xFF;
+					buf[0] = buf[1] ^ buf[2] ^ buf[3];
 
-							IDN=1;
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 
-						}
+					HAL_UART_Transmit_IT(terminal_uart, buf, 4);
+					debug("Transmit to terminal: <%x>", buf);
+				}
+				if (ADR == 1 && MSV0 == 0) {// Анализируем третий символ, отвечающий за конкретный БК
+					char str_adr[20];
+					sprintf(str_adr, "%c%c\r\n", sensor_inf.platform_adr[0],
+							sensor_inf.platform_adr[1]);
 
-						if (MSV0==1&&ADR==0) {	// Анализируем третий символ, отвечающий за конкретный БК
-							IDN=0;
-							uint8_t buf[4] = {0,0,0,0};
-							//uint32_t val = (ads_val*100)/421 ;
-							//uint32_t val = (8388607*100)/421 ;
-							    //uint32_t val =  1401366;
-							uint32_t val = (ads_val);
-									//	отправ	EE FF 0B 00
-							//0x78730B00;
-							    buf[3] = (val >> (2*8)) & 0xFF;
-							    buf[2] = (val >> (1*8)) & 0xFF;
-							    buf[1] = (val >> (0*8)) & 0xFF;
-							    buf[0] = buf[1]^buf[2]^buf[3];
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) str_adr,
+							strlen(str_adr));
 
+					ADR = 0;
+				}
+				if (MSV == 1 && ADR == 0 && MSV0 == 0) {// Анализируем третий символ, отвечающий за конкретный БК
 
+					uint8_t buf[4] = { 0, 0, 0, 0 };
+					//uint32_t val = (ads_val*100)/421 ;
+					//uint32_t val = (8388607*100)/421 ;
+					//uint32_t val =  1401366;
+					uint32_t val = (ads_val);
+					//	отправ	EE FF 0B 00
+					//0x78730B00;
+					buf[3] = (val >> (2 * 8)) & 0xFF;
+					buf[2] = (val >> (1 * 8)) & 0xFF;
+					buf[1] = (val >> (0 * 8)) & 0xFF;
+					buf[0] = buf[1] ^ buf[2] ^ buf[3];
 
-							HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+					HAL_UART_Transmit_IT(terminal_uart, buf, 4);
+					debug("Transmit to terminal: <%x>", buf);
 
-							HAL_UART_Transmit_IT(terminal_uart, buf, 4);
-							debug("Transmit to terminal: <%x>",
-									buf);
-						}
-						if (ADR==1&&MSV0==0) {	// Анализируем третий символ, отвечающий за конкретный БК
-							 char str_adr[20];
-							 sprintf(str_adr,"%c%c\r\n",sensor_inf.platform_adr[0],sensor_inf.platform_adr[1]);
+					MSV = 0;
+				}
 
-							 HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
-							 HAL_UART_Transmit_IT(terminal_uart, (uint8_t*)str_adr, strlen(str_adr));
-
-							 ADR=0;
-						}
-						if (MSV==1&&ADR==0&&MSV0==0) {	// Анализируем третий символ, отвечающий за конкретный БК
-
-						   uint8_t buf[4] = {0,0,0,0};
-													//uint32_t val = (ads_val*100)/421 ;
-													//uint32_t val = (8388607*100)/421 ;
-													    //uint32_t val =  1401366;
-						   uint32_t val = (ads_val);
-															//	отправ	EE FF 0B 00
-													//0x78730B00;
-						   buf[3] = (val >> (2*8)) & 0xFF;
-						   buf[2] = (val >> (1*8)) & 0xFF;
-						   buf[1] = (val >> (0*8)) & 0xFF;
-						   buf[0] = buf[1]^buf[2]^buf[3];
-
-
-						    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
-							HAL_UART_Transmit_IT(terminal_uart, buf, 4);
-							debug("Transmit to terminal: <%x>",
-							buf);
-
-							MSV=0;
-						}
-
-					//		memset(receive_buf, 0, sizeof(receive_buf));
-							terminal_parser_state =	PARSER_EMPT;
-					}
+				//		memset(receive_buf, 0, sizeof(receive_buf));
+				terminal_parser_state = PARSER_EMPT;
+			}
 
 			if (terminal_parser_state == PARSER_MSV70) { // если посылка Sxx;
 
+				uint8_t flags = 0;
+				flags |= (case_opened << 0);
+				flags |= (is_error << 1);
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
 
+				// Анализируем третий символ, отвечающий за конкретный БК
 
-									uint8_t flags = 0;
-									flags |= (case_opened << 0);
-									flags |= (is_error << 1);
-									if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
+				MSV0 = 1;
+				//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
+				debug("Transmit to terminal: <%x>", &MSV0);
+				//	memset(receive_buf, 0, sizeof(receive_buf));
+				terminal_parser_state = PARSER_EMPT;
 
-										// Анализируем третий символ, отвечающий за конкретный БК
+			}
 
-										MSV0=1;
-										//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
-										debug("Transmit to terminal: <%x>",&MSV0);
-									//	memset(receive_buf, 0, sizeof(receive_buf));
-										terminal_parser_state =	PARSER_EMPT;
-
-								}
 			if (terminal_parser_state == PARSER_MSV7) { // если посылка Sxx;
 
 
@@ -605,9 +601,6 @@ void StartTaskRxCommands(void *argument)
 			}
 
 			if (terminal_parser_state == PARSER_STP) { // если посылка Sxx;
-
-
-
 				uint8_t flags = 0;
 				flags |= (case_opened << 0);
 				flags |= (is_error << 1);
@@ -626,130 +619,149 @@ void StartTaskRxCommands(void *argument)
 
 			if (terminal_parser_state == PARSER_ADR7) { // если посылка S0x;
 
-
-
 				uint8_t flags = 0;
 				flags |= (case_opened << 0);
 				flags |= (is_error << 1);
-				if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
 
 				// Анализируем третий символ, отвечающий за конкретный БК
-				ADR=1;
-			//	memset(receive_buf, 0, sizeof(receive_buf));
-				terminal_parser_state =	PARSER_EMPT;
+				ADR = 1;
+				//	memset(receive_buf, 0, sizeof(receive_buf));
+				terminal_parser_state = PARSER_EMPT;
 
-				}
+			}
 
 			if (terminal_parser_state == PARSER_ADRNUM) { // если посылка S0x;
 
-
 				uint8_t flags = 0;
 				flags |= (case_opened << 0);
 				flags |= (is_error << 1);
-				if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
-				received_number=0;
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
+				received_number = 0;
 				for (int i = 7; i < 14; i++) {
 					if (receive_buf[i] >= '0' && receive_buf[i] <= '9') {
-						received_number = received_number * 10 + (receive_buf[i] - '0');
+						received_number = received_number * 10
+								+ (receive_buf[i] - '0');
 					}
 
 				}
 
 				// Проверка serial_number
-				 if (received_number == serial_number) {
-					 memset(sensor_inf.platform_adr, '0', sizeof(sensor_inf.platform_adr));
-					 sensor_inf.platform_adr[0]=receive_buf[3];
-					 sensor_inf.platform_adr[1]=receive_buf[4];
+				if (received_number == serial_number) {
+					memset(sensor_inf.platform_adr, '0',
+							sizeof(sensor_inf.platform_adr));
+					sensor_inf.platform_adr[0] = receive_buf[3];
+					sensor_inf.platform_adr[1] = receive_buf[4];
 					// clearFlash();
-					 //offset=0;
-					 if(offset>=248){
+					//offset=0;
+					if (offset >= 248) {
 
-					 		offset=0;
-					 		clearFlash();
-					 	}
-					 taskENTER_CRITICAL();
-					 WriteDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
-					 taskEXIT_CRITICAL();
+						offset = 0;
+						clearFlash();
+					}
+					taskENTER_CRITICAL();
+					WriteDeviceAddressOffset((uint8_t*) &sensor_inf,
+							sizeof(sensor_inf), offset);
+					taskEXIT_CRITICAL();
 
-					 offset+=sizeof(sensor_inf);
-				 }
-			//	 memset(receive_buf, 0, sizeof(receive_buf));
-				 //sensor_inf.crc_platform=(uint8_t)(crc32b((uint8_t *)sensor_inf.platform_adr, 2));
-				 terminal_parser_state =PARSER_EMPT;
+					offset += sizeof(sensor_inf);
+				}
+				//	 memset(receive_buf, 0, sizeof(receive_buf));
+				//sensor_inf.crc_platform=(uint8_t)(crc32b((uint8_t *)sensor_inf.platform_adr, 2));
+				terminal_parser_state = PARSER_EMPT;
 
 			}
 
 			if (terminal_parser_state == PARSER_BDR) { // если посылка S0x;
 
+				uint8_t flags = 0;
+				flags |= (case_opened << 0);
+				flags |= (is_error << 1);
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
+				sensor_inf.received_BDR = 0;
 
-							uint8_t flags = 0;
-							flags |= (case_opened << 0);
-							flags |= (is_error << 1);
-							if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
-							sensor_inf.received_BDR=0;
+				for (int i = 0; i < 22; i++) {
+					if (receive_buf[i] != ';') {
+						END_Cmd = END_Cmd + 1;
+					}
+					if (receive_buf[i] == ';') {
+						i = 22;
+					}
+				}
 
-							for (int i = 0; i < 22; i++) {
-								if (receive_buf[i] != ';') {
-									END_Cmd = END_Cmd+1;
-								}
-								if (receive_buf[i] == ';') {
-									i=22;
-								}
-							}
+				for (int i = 3; i < END_Cmd; i++) {
+					if (receive_buf[i] >= '0' && receive_buf[i] <= '9') {
+						sensor_inf.received_BDR = sensor_inf.received_BDR * 10
+								+ (receive_buf[i] - '0');
+					}
 
-							for (int i = 3; i < END_Cmd; i++) {
-								if (receive_buf[i] >= '0' && receive_buf[i] <= '9') {
-									sensor_inf.received_BDR = sensor_inf.received_BDR * 10 + (receive_buf[i] - '0');
-								}
+				}
 
-							}
+				while (!(USART2->ISR & USART_ISR_TC)) {
+					// Ожидание, пока передача завершится
+				}
 
-				  while (!(USART2->ISR & USART_ISR_TC)) {
-				         // Ожидание, пока передача завершится
-				     }
+				// Отключаем USART перед изменением настроек
+				USART2->CR1 &= ~USART_CR1_UE;
 
-				     // Отключаем USART перед изменением настроек
-				     USART2->CR1 &= ~USART_CR1_UE;
+				// �?зменение скорости
+				USART2->BRR = (SystemCoreClock + 12800) / sensor_inf.received_BDR;
 
-				     // �?зменение скорости
-				     USART2->BRR = (SystemCoreClock+12800) / sensor_inf.received_BDR;
+				// Включаем USART обратно
+				USART2->CR1 |= USART_CR1_UE;
 
-				     // Включаем USART обратно
-				     USART2->CR1 |= USART_CR1_UE;
+				taskENTER_CRITICAL();
+				WriteDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf),
+						offset);
+				taskEXIT_CRITICAL();
+				offset += sizeof(sensor_inf);
+				//    memset(receive_buf, 0, sizeof(receive_buf));
+				terminal_parser_state = PARSER_EMPT;
 
-				     taskENTER_CRITICAL();
-				     WriteDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
-				     taskEXIT_CRITICAL();
-				     offset+=sizeof(sensor_inf);
-				 //    memset(receive_buf, 0, sizeof(receive_buf));
-							 terminal_parser_state =PARSER_EMPT;
-
-						}
+			}
 
 
 
 			if (terminal_parser_state == PARSER_IDN7) { // если посылка S0x;
 
-
-
 				uint8_t flags = 0;
 				flags |= (case_opened << 0);
 				flags |= (is_error << 1);
-				if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
-				if(IDN==1){
-				uint8_t str_idn[50];
-				memset(str_idn, 0, sizeof(str_idn));
-				sprintf(str_idn,"CAS,BCA5/5kg     ,%d,P80\r\n",serial_number);
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
+				if (IDN == 1) {
+					uint8_t str_idn[50];
+					memset(str_idn, 0, sizeof(str_idn));
+					sprintf(str_idn, "CAS,BCA5/5kg     ,%d,P80\r\n", serial_number);
 
 					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
-					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*)str_idn, strlen(str_idn));
-					IDN=0;
-			//		memset(receive_buf, 0, sizeof(receive_buf));
-					terminal_parser_state =	PARSER_EMPT;
+					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) str_idn,
+							strlen(str_idn));
+					IDN = 0;
+					//		memset(receive_buf, 0, sizeof(receive_buf));
+					terminal_parser_state = PARSER_EMPT;
 					//debug("Transmit to terminal: <%x>", &str_idn);
 				}
 			}
 
+			if (terminal_parser_state == PARSER_DEGREE) // запрос угла наклона B0x
+			{
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
+
+				char str_degree[50];
+				memset(str_degree, 0, sizeof(str_degree));
+				sprintf(str_degree, "%f\r\n", config.degree);
+
+				//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
+				debug("Transmit to terminal: <%x>", &str_degree);
+				HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) str_degree, strlen(str_degree));
+				//	memset(receive_buf, 0, sizeof(receive_buf));
+				terminal_parser_state = PARSER_EMPT;
+			}
 			//memset(receive_buf, 0, sizeof(receive_buf));
 			//receive(terminal_uart, receive_buf, 1);
 			//receive(terminal_uart, RX_command_buff, 1);
@@ -1005,6 +1017,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функц�
 
 				     terminal_parser_state = PARSER_BDR;
 				}
+				else if (received_command[0]=='B'&&received_command[1]=='0'&&received_command[2]==platform_number.number_ch) {
+
+					 terminal_parser_state = PARSER_DEGREE;
+				}
+
 				RX_command_count = 0;
 			//	RX_command_buff[0] = 0;
 				//vTaskNotifyGiveFromISR( rxCommandsTaskHandle, &xHigherPriorityTaskWoken );

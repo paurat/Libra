@@ -74,6 +74,10 @@ int32_t get_acceleration_data(lis331dlh_t * config) {
 		return config->accelarations.z;
 	}
 
+	if(config->axis_select_x_z == AXIS_Y) {
+		return config->accelarations.y;
+	}
+
 	debug("ERROR: wrong axis selected!");
 	return 0;
 }
@@ -104,17 +108,17 @@ void find_degree(lis331dlh_t * config) {
 		}  // выход, если датчик не отвечает
 	}
 
-	float sinus = fabs(summ) / vector;
+    float sinus = fabs(summ) / vector;
 
 	if (sinus > 0.001) {
-		float degree = asinf(sinus) * 180 / M_PI;	// нахождение арксинуса и преобразование из радиан в градусы
+		config->degree = asinf(sinus) * 180 / M_PI;	// нахождение арксинуса и преобразование из радиан в градусы
 		float mean_axis = fabs(summ) / (float)count;
 		float mean_vector = vector / (float)count;
 		incline_factor = 1 + mean_axis / mean_vector;	// вычисление поправочного коэффициента на угол наклона
 
 		debug("Mean = %f\r\n", mean_axis);
 		debug("Full = %f\r\n", mean_vector);
-		debug("degree = %f\r\n", degree);
+		debug("degree = %f\r\n", config->degree);
 		debug("incline factor = %f\r\n", incline_factor);
 	}
 	else {

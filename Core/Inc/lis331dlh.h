@@ -28,12 +28,11 @@ typedef enum {
 	DATA_RATE_1000 	= 0b11,
 } data_rate_t;
 
-
 typedef enum {
 	AXIS_Z	= 0U,
 	AXIS_X	= 1U,
+	AXIS_Y  = 2U,
 } axis_select_t;
-
 
 typedef struct {
 	uint32_t timestamp;
@@ -87,6 +86,7 @@ typedef struct {
 
 	float zero_acceleration_for_z;
 	float one_g_acceleration_for_z;
+	float degree;
 } lis331dlh_t;
 
 
@@ -97,7 +97,7 @@ int lis331dlh_init_i2c(lis331dlh_t *, I2C_HandleTypeDef *);
 
 void lis331dlh_update_config(lis331dlh_t *);
 int lis331dlh_update_accelaration(lis331dlh_t *);
-
+int lis331dlh_update_accelaration_local(lis331dlh_t * config, int16_t *x, int16_t *y, int16_t *z);
 uint8_t lis331dlh_read_status(lis331dlh_t *);
 //int lis331dlh_is_ready(lis331dlh_t *);
 

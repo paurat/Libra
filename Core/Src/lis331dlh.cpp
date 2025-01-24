@@ -5,7 +5,7 @@
 #include "lis331dlh.h"
 #include "spi.h"
 #include "debug.h"
-
+#include <math.h>
 
 enum REGISTER_NAMES : uint8_t {
 	WHO_AM_I = 0x0F,
@@ -188,7 +188,25 @@ int lis331dlh_init_spi(
 	config->chip_select_port = port;
 	config->chip_select_pin = pin;
 
-	config->axis_select_x_z = (axis_select_t) HAL_GPIO_ReadPin(X_Z_SELECT_GPIO_Port, X_Z_SELECT_Pin);
+
+
+	if(lis331dlh_init(config)) {
+		return 1;
+	}
+
+	int16_t x,y,z;
+
+	lis331dlh_update_accelaration_local(config, &x, &y, &z);
+
+	x = abs(x);
+
+	y = abs(y);
+
+	z = abs(z);
+
+	config->axis_select_x_z =  (x >= y && x >= z) ? AXIS_X :
+							  ((y >= x && y >= z) ? AXIS_Y :
+							  AXIS_Z);
 
 	if(config->axis_select_x_z == AXIS_X) {
 		debug("AXIS SELECTED: X\r\n");
@@ -198,8 +216,8 @@ int lis331dlh_init_spi(
 		debug("AXIS SELECTED: Z\r\n");
 	}
 
-	if(lis331dlh_init(config)) {
-		return 1;
+	if(config->axis_select_x_z == AXIS_Y) {
+		debug("AXIS SELECTED: Y\r\n");
 	}
 
 	return 0;
@@ -259,12 +277,12 @@ int lis331dlh_update_accelaration(lis331dlh_t * config) {
 }
 
 
-int lis331dlh_update_accelaration(lis331dlh_t * config, int16_t & x, int16_t & y, int16_t & z) {
+int lis331dlh_update_accelaration_local(lis331dlh_t * config, int16_t *x, int16_t *y, int16_t *z) {
 	read_register(config, OUT_X_L, &config->out_x_low, 6);
 
-	x =	get_scaled_accelaration(config->out_x_low, config->out_x_high, config->range) / 16;
-	y = get_scaled_accelaration(config->out_y_low, config->out_y_high, config->range) / 16;
-	z = get_scaled_accelaration(config->out_z_low, config->out_z_high, config->range) / 16;
+	*x = get_scaled_accelaration(config->out_x_low, config->out_x_high, config->range) / 16;
+	*y = get_scaled_accelaration(config->out_y_low, config->out_y_high, config->range) / 16;
+	*z = get_scaled_accelaration(config->out_z_low, config->out_z_high, config->range) / 16;
 
 	return 0;
 }
