@@ -9,19 +9,20 @@ C:\ST\STM32CubeIDE_1.17.0\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.external
 ../Core/Src/calc_length.cpp:164:7:float get_mean_value_from_window()	1
 ../Core/Src/calc_length.cpp:172:9:uint8_t is_need_stop_measuring()	5
 ../Core/Src/calc_length.cpp:180:7:float get_real_length()	1
-../Core/Src/calc_length.cpp:187:9:uint8_t is_measuring_meaningful(float)	3
-../Core/Src/calc_length.cpp:192:6:void reset_variables()	3
-../Core/Src/calc_length.cpp:204:6:void check_positive_speed()	5
-../Core/Src/calc_length.cpp:215:6:void update_speed_and_length(lis331dlh_t*)	2
-../Core/Src/calc_length.cpp:224:6:void print_result(float)	2
-../Core/Src/calc_length.cpp:231:6:void find_maxmin_accelerations()	3
-../Core/Src/calc_length.cpp:249:6:void calc_length(lis331dlh_t*)	8
-../Core/Src/calc_length.cpp:307:6:void reset_acceleration_maximums()	2
-../Core/Src/calc_length.cpp:317:6:void reset_move_maximums()	2
-../Core/Src/calc_length.cpp:327:7:float get_max_positive_acceleration()	1
-../Core/Src/calc_length.cpp:333:7:float get_max_negative_acceleration()	1
-../Core/Src/calc_length.cpp:338:7:float get_max_positive_move()	1
-../Core/Src/calc_length.cpp:343:7:float get_max_negative_move()	1
-../Core/Src/calc_length.cpp:347:9:uint8_t round_and_limit(float, float)	2
-../Core/Src/calc_length.cpp:355:7:float round_and_limit_float(float)	2
+../Core/Src/calc_length.cpp:184:7:float get_real_acc()	1
+../Core/Src/calc_length.cpp:192:9:uint8_t is_measuring_meaningful(float)	3
+../Core/Src/calc_length.cpp:197:6:void reset_variables()	3
+../Core/Src/calc_length.cpp:209:6:void check_positive_speed()	5
+../Core/Src/calc_length.cpp:220:6:void update_speed_and_length(lis331dlh_t*)	2
+../Core/Src/calc_length.cpp:229:6:void print_result(float)	2
+../Core/Src/calc_length.cpp:236:6:void find_maxmin_accelerations()	3
+../Core/Src/calc_length.cpp:254:6:void calc_length(lis331dlh_t*)	8
+../Core/Src/calc_length.cpp:312:6:void reset_acceleration_maximums()	1
+../Core/Src/calc_length.cpp:322:6:void reset_move_maximums()	1
+../Core/Src/calc_length.cpp:332:7:float get_max_positive_acceleration()	1
+../Core/Src/calc_length.cpp:338:7:float get_max_negative_acceleration()	1
+../Core/Src/calc_length.cpp:343:7:float get_max_positive_move()	1
+../Core/Src/calc_length.cpp:348:7:float get_max_negative_move()	1
+../Core/Src/calc_length.cpp:352:9:uint8_t round_and_limit(float, float)	2
+../Core/Src/calc_length.cpp:360:7:float round_and_limit_float(float)	2
 C:\ST\STM32CubeIDE_1.17.0\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.1.0.202410251130\tools\bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/include/c++/12.3.1/cmath:253:5:constexpr typename __gnu_cxx::__enable_if<std::__is_integer<_Tp>::__value, double>::__type std::fabs(_Tp) [with _Tp = long int]	1

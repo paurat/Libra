@@ -181,6 +181,11 @@ float get_real_length() {
 	return length * 9.8 / (float)1000 / (float)1024;
 }
 
+float get_real_acc() {
+	float real_acceleration = acceleration * 9.8 / (float)1024;
+	return real_acceleration;
+}
+
 // проверка данных на корректность. условия два:
 // 		перемещения меньше 1 считаем погрешностью
 // 		должно быть готово "окно" для вычисления сдивига
@@ -305,22 +310,22 @@ void calc_length(lis331dlh_t * config) {
 
 // сброс максимумом ускорений
 void reset_acceleration_maximums() {
-	if ((HAL_GetTick() - acceleration_timestamp) > maxmin_timeout_ms) {
-		acceleration_timestamp = HAL_GetTick();
-
-		max_positive_acceleration = 0.0f;
-		max_negative_acceleration = 0.0f;
-	}
+//	if ((HAL_GetTick() - acceleration_timestamp) > maxmin_timeout_ms) {
+//		acceleration_timestamp = HAL_GetTick();
+//
+//		max_positive_acceleration = 0.0f;
+//		max_negative_acceleration = 0.0f;
+//	}
 }
 
 // сброс максимумом по перемещениям
 void reset_move_maximums() {
-	if ((HAL_GetTick() - move_timestamp) > maxmin_timeout_ms) {
-		move_timestamp = HAL_GetTick();
-
-		max_positive_move = 0.0f;
-		max_negative_move = 0.0f;
-	}
+//	if ((HAL_GetTick() - move_timestamp) > maxmin_timeout_ms) {
+//		move_timestamp = HAL_GetTick();
+//
+//		max_positive_move = 0.0f;
+//		max_negative_move = 0.0f;
+//	}
 }
 
 // получить максимум ускорения в +

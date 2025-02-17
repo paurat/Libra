@@ -32,6 +32,7 @@ float get_max_positive_acceleration();
 float get_max_negative_acceleration();
 float get_max_positive_move();
 float get_max_negative_move();
+float get_real_acc();
 
 uint8_t round_and_limit(float value, float limit);
 float round_and_limit_float(float value);

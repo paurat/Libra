@@ -123,7 +123,7 @@ lis331dlh_t config = {
 	.range = FULL_SCALE_2G,
 };
 
-platform_switches_state_t platform_number= {'0','0'};
+platform_switches_state_t platform_number= {'0','3'};
 
 //const char str_idn[]="HBM,C16iC3/30t     ,3319402,P80\r\n";
 struct sensor_inf {
@@ -375,13 +375,9 @@ void StartDebugTask(void *argument)
 
 		if (!debug_enabled()) {
 
-			float max_acceleration = fmax(
-					round_and_limit_float(get_max_positive_acceleration()),
-					round_and_limit_float(get_max_negative_acceleration()));
+			float max_acceleration = round_and_limit_float(get_real_acc());
 
-			float maximum_move = fmax(
-					round_and_limit_float(get_max_positive_move()),
-					round_and_limit_float(get_max_negative_move()));
+			float maximum_move = round_and_limit_float(get_real_length());
 
 			uint8_t message[256] = { 0, };
 			memset(message, 0, sizeof(message));
@@ -447,13 +443,9 @@ void StartTaskRxCommands(void *argument)
 //			}
 			if (terminal_parser_state == PARSER_S4x) { // если посылка S4x;
 
-				float maximum = fmax(
-						round_and_limit_float(get_max_positive_move()),
-						round_and_limit_float(get_max_negative_move()));
+				float maximum = round_and_limit_float(get_real_length());
 
-				float max_acceleration = fmax(
-						round_and_limit_float(get_max_positive_acceleration()),
-						round_and_limit_float(get_max_negative_acceleration()));
+				float max_acceleration = round_and_limit_float(get_real_acc());
 
 				uint8_t flags = 0;
 				flags |= (case_opened << 0);
@@ -811,13 +803,9 @@ void StartTaskAccelerometer(void *argument)
 
 		vTaskDelay(5);
 
-		float maximum = fmax(
-				round_and_limit_float(get_max_positive_move()),
-				round_and_limit_float(get_max_negative_move()));
+		float maximum = round_and_limit_float(get_real_length());
 
-		float max_acceleration = fmax(
-				round_and_limit_float(get_max_positive_acceleration()),
-				round_and_limit_float(get_max_negative_acceleration()));
+		float max_acceleration = round_and_limit_float(get_real_acc());
 
 		if(period_expired) {
 		//	debug("\r\nTaskAccelerometer: Timer done. current maximum = %f maximum_in_period = %f current max_acceleration = %f max_acceleration_in_period = %f \r\n",
