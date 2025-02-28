@@ -131,6 +131,7 @@ struct sensor_inf {
 	uint32_t received_BDR;
 	//uint8_t crc_platform;
 } sensor_inf __attribute__((aligned(8)));
+int16_t number_sn = 0;
 int offset = 0;
 uint16_t serial_number =0;// СЕР�?ЙНЫЙ НОМЕР ПЛАТЫ (от 0 до 65535 включительно)
 int16_t serial_number_control=0;
@@ -231,6 +232,7 @@ void MX_FREERTOS_Init(void) {
 
 	g_mesQueue = xQueueCreate(2, 22);
 	serial_number =(uint16_t)(crc32b((uint8_t *)UID_BASE, 8));
+	serial_number = abs((int16_t)serial_number);
 	serial_number_control = abs((int16_t)serial_number);
 	ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 	//memset(transmitting_command, 0, sizeof(transmitting_command));
@@ -251,6 +253,7 @@ void MX_FREERTOS_Init(void) {
 		memset(&sensor_inf, 0, sizeof(sensor_inf));
 		sensor_inf.platform_adr[0]='0';
 		sensor_inf.platform_adr[1]='1';
+		number_sn = 1;
 		sensor_inf.received_BDR=38400;
 		WriteDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 		offset+=sizeof(sensor_inf);
@@ -260,6 +263,14 @@ void MX_FREERTOS_Init(void) {
 		offset-=sizeof(sensor_inf);
 		ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 		offset+=sizeof(sensor_inf);
+
+		for (int i = 0; i <= 1; i++) {
+			if (sensor_inf.platform_adr[i] >= '0'
+					&& sensor_inf.platform_adr[i] <= '9') {
+				number_sn = number_sn * 10 + (sensor_inf.platform_adr - '0');
+			}
+
+		}
 	}
 
 	 while (!(USART2->ISR & USART_ISR_TC)) {
@@ -441,7 +452,30 @@ void StartTaskRxCommands(void *argument)
 //
 //				osDelay(1);
 //			}
-			if (terminal_parser_state == PARSER_S4x) { // если посылка S4x;
+		if (terminal_parser_state == PARSER_S4x) { // если посылка S4x;
+			int16_t number_bk = 0;
+			for (int i = 0; i < 22; i++) {
+				if (receive_buf[i] != ';') {
+
+					END_Cmd = END_Cmd + 1;
+				}
+				if (receive_buf[i] == ';') {
+
+					break;
+				}
+			}
+
+			for (int i = 2; i < END_Cmd; i++) {
+				if (receive_buf[i] >= '0' && receive_buf[i] <= '9') {
+					number_bk = number_bk * 10
+							+ (receive_buf[i] - '0');
+				}
+
+			}
+
+
+
+			if (number_bk == number_sn-1) {//другое условие
 
 				float maximum = round_and_limit_float(get_real_length());
 
@@ -450,41 +484,45 @@ void StartTaskRxCommands(void *argument)
 				uint8_t flags = 0;
 				flags |= (case_opened << 0);
 				flags |= (is_error << 1);
-				if (is_error) is_error = false;// сбрасываем флаг ошибки после отправки на терминал
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
 
-					transmitting_command[0] = HDC_config.last_temperature;
-					transmitting_command[1] = HDC_config.last_humidity;
-					transmitting_command[2] = flags;
-					transmitting_command[3] = (((LPS_data.last_pressure / 1000) - 0.5) / 1.5 * 100);
+				transmitting_command[0] = HDC_config.last_temperature;
+				transmitting_command[1] = HDC_config.last_humidity;
+				transmitting_command[2] = flags;
+				transmitting_command[3] = (((LPS_data.last_pressure / 1000)
+						- 0.5) / 1.5 * 100);
 
-					memcpy(&transmitting_command[4], &maximum, 4);
-					memcpy(&transmitting_command[8], &max_acceleration, 4);
-					memcpy(&transmitting_command[12], &maximum_move_in_period, 4);
-					memcpy(&transmitting_command[16], &max_acceleration_in_period, 4);
-					memcpy(&transmitting_command[20], &serial_number_control, 2);
+				memcpy(&transmitting_command[4], &maximum, 4);
+				memcpy(&transmitting_command[8], &max_acceleration, 4);
+				memcpy(&transmitting_command[12], &maximum_move_in_period, 4);
+				memcpy(&transmitting_command[16], &max_acceleration_in_period,
+						4);
+				memcpy(&transmitting_command[20], &serial_number_control, 2);
 
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 
-					HAL_UART_Transmit_IT(terminal_uart, transmitting_command, 22);
+				HAL_UART_Transmit_IT(terminal_uart, transmitting_command, 22);
 
-					//memset(transmitting_command, 0, sizeof(transmitting_command));
+				//memset(transmitting_command, 0, sizeof(transmitting_command));
 				//	memset(receive_buf, 0, sizeof(receive_buf));
-					terminal_parser_state =	PARSER_EMPT;
+				terminal_parser_state = PARSER_EMPT;
 
-					debug("Transmit to terminal: <%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x>",
-							transmitting_command[0], transmitting_command[1],
-							transmitting_command[2], transmitting_command[3],
-							transmitting_command[4], transmitting_command[5],
-							transmitting_command[6], transmitting_command[7],
-							transmitting_command[8], transmitting_command[9],
-							transmitting_command[10], transmitting_command[11],
-							transmitting_command[12], transmitting_command[13],
-							transmitting_command[14], transmitting_command[15],
-							transmitting_command[16], transmitting_command[17],
-							transmitting_command[18], transmitting_command[19],
-							transmitting_command[20], transmitting_command[21]);
-
+				debug(
+						"Transmit to terminal: <%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x>",
+						transmitting_command[0], transmitting_command[1],
+						transmitting_command[2], transmitting_command[3],
+						transmitting_command[4], transmitting_command[5],
+						transmitting_command[6], transmitting_command[7],
+						transmitting_command[8], transmitting_command[9],
+						transmitting_command[10], transmitting_command[11],
+						transmitting_command[12], transmitting_command[13],
+						transmitting_command[14], transmitting_command[15],
+						transmitting_command[16], transmitting_command[17],
+						transmitting_command[18], transmitting_command[19],
+						transmitting_command[20], transmitting_command[21]);
 			}
+		}
 
 			if (terminal_parser_state == PARSER_Sxx) { // если посылка S0x;
 
@@ -500,36 +538,45 @@ void StartTaskRxCommands(void *argument)
 
 				}
 
-				if (MSV0 == 1 && ADR == 0) {// Анализируем третий символ, отвечающий за конкретный БК
-					IDN = 0;
-					uint8_t buf[4] = { 0, 0, 0, 0 };
-					//uint32_t val = (ads_val*100)/421 ;
-					//uint32_t val = (8388607*100)/421 ;
-					//uint32_t val =  1401366;
-					uint32_t val = (ads_val);
-					//	отправ	EE FF 0B 00
-					//0x78730B00;
-					buf[3] = (val >> (2 * 8)) & 0xFF;
-					buf[2] = (val >> (1 * 8)) & 0xFF;
-					buf[1] = (val >> (0 * 8)) & 0xFF;
-					buf[0] = buf[1] ^ buf[2] ^ buf[3];
+			if (MSV0 == 1 && ADR == 0) { // Анализируем третий символ, отвечающий за конкретный БК
+				IDN = 0;
+				uint8_t buf[4] = { 0, 0, 0, 0 };
+				//uint32_t val = (ads_val*100)/421 ;
+				//uint32_t val = (8388607*100)/421 ;
+				//uint32_t val =  1401366;
+				uint32_t val = (ads_val);
+				//	отправ	EE FF 0B 00
+				//0x78730B00;
+				buf[3] = (val >> (2 * 8)) & 0xFF;
+				buf[2] = (val >> (1 * 8)) & 0xFF;
+				buf[1] = (val >> (0 * 8)) & 0xFF;
+				buf[0] = buf[1] ^ buf[2] ^ buf[3];
 
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 
-					HAL_UART_Transmit_IT(terminal_uart, buf, 4);
-					debug("Transmit to terminal: <%x>", buf);
+				HAL_UART_Transmit_IT(terminal_uart, buf, 4);
+				debug("Transmit to terminal: <%x>", buf);
+			}
+			if (ADR == 1 && MSV0 == 0) {// Анализируем третий символ, отвечающий за конкретный БК
+				char str_adr[20];
+				sprintf(str_adr, "%c%c\r\n", sensor_inf.platform_adr[0],
+						sensor_inf.platform_adr[1]);
+
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+				HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) str_adr,
+						strlen(str_adr));
+
+				for (int i = 0; i <= 1; i++) {
+					if (sensor_inf.platform_adr[i] >= '0'
+							&& sensor_inf.platform_adr[i] <= '9') {
+						number_sn = number_sn * 10
+								+ (sensor_inf.platform_adr - '0');
+					}
+
 				}
-				if (ADR == 1 && MSV0 == 0) {// Анализируем третий символ, отвечающий за конкретный БК
-					char str_adr[20];
-					sprintf(str_adr, "%c%c\r\n", sensor_inf.platform_adr[0],
-							sensor_inf.platform_adr[1]);
 
-					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
-					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) str_adr,
-							strlen(str_adr));
-
-					ADR = 0;
-				}
+				ADR = 0;
+			}
 				if (MSV == 1 && ADR == 0 && MSV0 == 0) {// Анализируем третий символ, отвечающий за конкретный БК
 
 					uint8_t buf[4] = { 0, 0, 0, 0 };
@@ -680,7 +727,7 @@ void StartTaskRxCommands(void *argument)
 						END_Cmd = END_Cmd + 1;
 					}
 					if (receive_buf[i] == ';') {
-						i = 22;
+						break;;
 					}
 				}
 
@@ -739,8 +786,11 @@ void StartTaskRxCommands(void *argument)
 				}
 			}
 
-			if (terminal_parser_state == PARSER_DEGREE) // запрос угла наклона B0x
+		if (terminal_parser_state == PARSER_DEGREE) // запрос угла наклона B0x
 			{
+				uint8_t flags = 0;
+				flags |= (case_opened << 0);
+				flags |= (is_error << 1);
 				if (is_error)
 					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
 
@@ -963,7 +1013,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {	//Callback-функц�
 
 				if (received_command[0]=='S'){
 
-					if (received_command[1]=='4'&&received_command[2]==platform_number.number_ch){
+					//if (received_command[1]=='4'&&received_command[2]==platform_number.number_ch){
+					if (received_command[1]=='4'){
 
 						terminal_parser_state = PARSER_S4x;
 
