@@ -472,18 +472,22 @@ void StartTaskRxCommands(void *argument) {
 //				osDelay(1);
 //			}
 
-		if (received_command[1] == '3') { // если посылка S3x;
+		if (terminal_parser_state == PARSER_S3x) { // если посылка S3x;
 			// нахождение максимума и ограничение максимальным значением (значение 1 байта)
 			uint8_t maximum = round(
 					fmax(round_and_limit(get_max_positive_move() * 10 / 2, 255),
 							round_and_limit(get_max_negative_move() * 10 / 2,
 									255)));
 
-			switch (received_command[2]) // Анализируем третий символ, отвечающий за конкретную команду
+			switch (receive_buf[2]) // Анализируем третий символ, отвечающий за конкретную команду
 			{
 			case '3':	          	 	//	Запрос ID
 				memcpy(transmitting_command, "BTS4", 4);
+
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+
 				HAL_UART_Transmit_IT(terminal_uart, transmitting_command, 4);
+				terminal_parser_state = PARSER_EMPT;
 				debug("Transmit to terminal: <%02x %02x %02x %02x>",
 						transmitting_command[0], transmitting_command[1],
 						transmitting_command[2], transmitting_command[3]);
@@ -497,7 +501,10 @@ void StartTaskRxCommands(void *argument) {
 				transmitting_command[2] = HDC_config.last_temperature;
 				transmitting_command[3] = presshum;
 
-				HAL_UART_Transmit_IT(&huart2, transmitting_command, 4);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+
+				HAL_UART_Transmit_IT(terminal_uart, transmitting_command, 4);
+				terminal_parser_state = PARSER_EMPT;
 				debug("Transmit to terminal: <%02x %02x %02x %02x>\r\n",
 						transmitting_command[0], transmitting_command[1],
 						transmitting_command[2], transmitting_command[3]);
@@ -512,7 +519,9 @@ void StartTaskRxCommands(void *argument) {
 				transmitting_command[3] = round_and_limit(
 						get_max_negative_acceleration() * 10, 255.0f); //сюда вставляем максимальное значение ускорения в минус умноженное на 10
 
-				HAL_UART_Transmit_IT(&huart2, transmitting_command, 4);
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+				HAL_UART_Transmit_IT(terminal_uart, transmitting_command, 4);
+				terminal_parser_state = PARSER_EMPT;
 				debug("Transmit to terminal: <%02x %02x %02x %02x>\r\n",
 						transmitting_command[0], transmitting_command[1],
 						transmitting_command[2], transmitting_command[3]);
