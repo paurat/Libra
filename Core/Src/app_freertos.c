@@ -70,6 +70,7 @@ typedef enum {
 		PARSER_ADRNUM,
 		PARSER_STP,
 		PARSER_EMPT,
+		PARSER_COF,
 		PARSER_DEGREE
 } parser_state_t; //7==?
 
@@ -98,6 +99,7 @@ void ADS_Callback(uint32_t value);
 uint8_t transmitting_command[22];
 uint8_t received_command[22];	//буфер приема данных от терминала
 uint16_t received_number = 0;
+uint16_t COF = 28;
 //uint32_t received_BDR = 0;
 uint32_t ads_val;
 uint8_t is_data_received = 0;
@@ -108,6 +110,7 @@ uint8_t RX_command_buff[1]={0};
 int RX_command_count=0;
 int MSV0 = 0;
 int MSV = 0;
+int S0X = 0;
 int ADR = 0;
 volatile uint8_t need_send_pressure = 0;
 volatile uint8_t presshum = 0;
@@ -285,7 +288,6 @@ void MX_FREERTOS_Init(void) {
 		offset-=sizeof(sensor_inf);
 		ReadDeviceAddressOffset((uint8_t*) &sensor_inf, sizeof(sensor_inf), offset);
 		offset+=sizeof(sensor_inf);
-		number_sn = 0;
 		number_sn = 0;
 		for (int i = 0; i <= 1; i++) {
 			if (sensor_inf.platform_adr[i] >= '0'
@@ -638,15 +640,31 @@ void StartTaskRxCommands(void *argument) {
 				uint32_t val = (ads_val);
 				//	отправ	EE FF 0B 00
 				//0x78730B00;
-				buf[3] = (val >> (2 * 8)) & 0xFF;
-				buf[2] = (val >> (1 * 8)) & 0xFF;
-				buf[1] = (val >> (0 * 8)) & 0xFF;
-				buf[0] = buf[1] ^ buf[2] ^ buf[3];
 
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+				if (COF == 28) {
+					buf[3] = (val >> (2 * 8)) & 0xFF;
+					buf[2] = (val >> (1 * 8)) & 0xFF;
+					buf[1] = (val >> (0 * 8)) & 0xFF;
+					buf[0] = buf[1] ^ buf[2] ^ buf[3];
 
-				HAL_UART_Transmit_IT(terminal_uart, buf, 4);
-				debug("Transmit to terminal: <%x>", buf);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+
+					HAL_UART_Transmit_IT(terminal_uart, buf, 4);
+					debug("Transmit to terminal: <%x>", buf);
+
+				}
+				if (COF == 3) {
+					char SOX_VAL[50];
+					sprintf(SOX_VAL, "%lu", val);
+
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) SOX_VAL,
+							strlen(SOX_VAL));
+
+					debug("Transmit to terminal: <%x>", buf);
+
+				}
+
 			}
 			if (ADR == 1 && MSV0 == 0) {// Анализируем третий символ, отвечающий за конкретный БК
 				char str_adr[20];
@@ -656,12 +674,11 @@ void StartTaskRxCommands(void *argument) {
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 				HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) str_adr,
 						strlen(str_adr));
-
+				number_sn = 0;
 				for (int i = 0; i <= 1; i++) {
 					if (sensor_inf.platform_adr[i] >= '0'
 							&& sensor_inf.platform_adr[i] <= '9') {
-						number_sn = number_sn * 10
-								+ (sensor_inf.platform_adr - '0');
+						number_sn = number_sn * 10 + (sensor_inf.platform_adr[i] - '0');
 					}
 
 				}
@@ -677,15 +694,30 @@ void StartTaskRxCommands(void *argument) {
 				uint32_t val = (ads_val);
 				//	отправ	EE FF 0B 00
 				//0x78730B00;
-				buf[3] = (val >> (2 * 8)) & 0xFF;
-				buf[2] = (val >> (1 * 8)) & 0xFF;
-				buf[1] = (val >> (0 * 8)) & 0xFF;
-				buf[0] = buf[1] ^ buf[2] ^ buf[3];
+				if (COF == 28) {
+					buf[3] = (val >> (2 * 8)) & 0xFF;
+					buf[2] = (val >> (1 * 8)) & 0xFF;
+					buf[1] = (val >> (0 * 8)) & 0xFF;
+					buf[0] = buf[1] ^ buf[2] ^ buf[3];
 
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
-				HAL_UART_Transmit_IT(terminal_uart, buf, 4);
-				debug("Transmit to terminal: <%x>", buf);
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
 
+					HAL_UART_Transmit_IT(terminal_uart, buf, 4);
+					debug("Transmit to terminal: <%x>", buf);
+
+				}
+				if (COF == 3) {
+					char SOX_VAL[50];
+					sprintf(SOX_VAL, "%lu", val);
+
+					HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, GPIO_PIN_SET);
+					HAL_UART_Transmit_IT(terminal_uart, (uint8_t*) SOX_VAL,
+							strlen(SOX_VAL));
+
+					debug("Transmit to terminal: <%x>", buf);
+
+				}
+				S0X = 1;
 				MSV = 0;
 			}
 
@@ -701,8 +733,6 @@ void StartTaskRxCommands(void *argument) {
 			if (is_error)
 				is_error = false; // сбрасываем флаг ошибки после отправки на терминал
 
-			// Анализируем третий символ, отвечающий за конкретный БК
-
 			MSV0 = 1;
 			//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
 			debug("Transmit to terminal: <%x>", &MSV0);
@@ -711,23 +741,52 @@ void StartTaskRxCommands(void *argument) {
 
 		}
 
-		if (terminal_parser_state == PARSER_MSV7) { // если посылка Sxx;
-
+		if (terminal_parser_state == PARSER_COF) {
+			int END_Cmd = 0;
 			uint8_t flags = 0;
 			flags |= (case_opened << 0);
 			flags |= (is_error << 1);
 			if (is_error)
 				is_error = false; // сбрасываем флаг ошибки после отправки на терминал
 
-			// Анализируем третий символ, отвечающий за конкретный БК
+			COF = 0;
 
-			MSV = 1;
+			for (int i = 0; i < 22; i++) {
+				if (receive_buf[i] != ';') {
+					END_Cmd = END_Cmd + 1;
+				}
+				if (receive_buf[i] == ';') {
+					break;;
+				}
+			}
+			for (int i = 3; i < END_Cmd; i++) {
+				if (receive_buf[i] >= '0' && receive_buf[i] <= '9') {
+					COF = COF * 10 + (receive_buf[i] - '0');
+				}
+			}
 			//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
 			debug("Transmit to terminal: <%x>", &MSV);
 			//	memset(receive_buf, 0, sizeof(receive_buf));
 			terminal_parser_state = PARSER_EMPT;
 
 		}
+
+			if (terminal_parser_state == PARSER_MSV7) { // если посылка Sxx;
+
+				uint8_t flags = 0;
+				flags |= (case_opened << 0);
+				flags |= (is_error << 1);
+				if (is_error)
+					is_error = false; // сбрасываем флаг ошибки после отправки на терминал
+
+				MSV = 1;
+
+				//HAL_UART_Transmit_IT(terminal_uart, &MSV, 1);
+				debug("Transmit to terminal: <%x>", &MSV);
+				//	memset(receive_buf, 0, sizeof(receive_buf));
+				terminal_parser_state = PARSER_EMPT;
+
+			}
 
 		if (terminal_parser_state == PARSER_STP) { // если посылка Sxx;
 			uint8_t flags = 0;
@@ -1088,7 +1147,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {//Callback-функци
 
 		if ((RX_command_buff[0] == 'S' || RX_command_buff[0] == 'M'
 				|| RX_command_buff[0] == 'I' || RX_command_buff[0] == 'B'
-				|| RX_command_buff[0] == 'A') && RX_command_count == 0) {
+				|| RX_command_buff[0] == 'A'|| RX_command_buff[0] == 'C') && RX_command_count == 0) {
 			received_command[RX_command_count] = RX_command_buff[0];
 			RX_command_count = RX_command_count + 1;
 		} else if (RX_command_buff[0] != ';' && RX_command_count != 0
@@ -1152,10 +1211,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {//Callback-функци
 					&& received_command[2] == 'R') {
 
 				terminal_parser_state = PARSER_BDR;
-			} else if (received_command[0] == 'B' && received_command[1] == '0'
-					&& received_command[2] == platform_number.number_ch) {
+			} else if (received_command[0] == 'B' && received_command[1] == 'D'
+					&& received_command[2] == 'R') {
 
 				terminal_parser_state = PARSER_DEGREE;
+
+			} else if (received_command[0] == 'C' && received_command[1] == 'O'
+					&& received_command[2] == 'F') {
+
+				terminal_parser_state = PARSER_COF;
 			}
 
 			RX_command_count = 0;
